@@ -540,6 +540,24 @@ body {
     height: 5px;
 }
 
+.device-state.online {
+    color: var(--accent);
+}
+
+.device-state.offline {
+    color: var(--danger);
+}
+
+.mini-dot.online {
+    background: var(--accent);
+    box-shadow: 0 0 8px rgba(183,255,60,0.6);
+}
+
+.mini-dot.offline {
+    background: var(--danger);
+    box-shadow: 0 0 8px rgba(255,95,86,0.5);
+}
+
 
 /* ------------------------------------------------------------
    HERO GRID
@@ -1207,6 +1225,42 @@ body {
    EVENTS
 ------------------------------------------------------------ */
 
+.event-summary {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.active-counter {
+    font-family: var(--mono);
+    font-size: 8px;
+    color: var(--warning);
+    letter-spacing: 0.08em;
+    padding: 5px 8px;
+    border: 1px solid rgba(255,181,71,0.25);
+    background: var(--warning-soft);
+}
+
+.active-event-row {
+    background: rgba(255,181,71,0.025);
+}
+
+.active-tag {
+    margin-left: 7px;
+    font-size: 7px;
+    color: var(--warning);
+    letter-spacing: 0.08em;
+}
+
+.event-marker.pulse {
+    animation: eventPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes eventPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+}
+
 .event-panel {
     overflow: hidden;
 }
@@ -1533,6 +1587,12 @@ body {
         grid-template-columns: 1fr 1fr;
 
         padding: 15px;
+    }
+
+    .event-summary {
+        align-items: flex-end;
+        flex-direction: column;
+        gap: 6px;
     }
 
     .dashboard-footer {

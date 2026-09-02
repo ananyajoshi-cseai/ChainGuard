@@ -197,9 +197,9 @@
                     DEVICE
                 </span>
 
-                <span class="meta-value device-state">
-                    <span class="mini-dot"></span>
-                    CONNECTED
+                <span class="meta-value device-state" id="deviceStatus">
+                    <span class="mini-dot" id="deviceStatusDot"></span>
+                    CHECKING
                 </span>
 
             </div>
@@ -685,9 +685,14 @@
                     <h2>Shipment History</h2>
                 </div>
 
-                <div class="event-counter">
-                    <span id="eventCount">0</span>
-                    EVENTS
+                <div class="event-summary">
+                    <div class="event-counter">
+                        <span id="eventCount">0</span>
+                        EVENTS
+                    </div>
+                    <div class="active-counter" id="activeEventCount">
+                        0 ACTIVE
+                    </div>
                 </div>
 
             </div>

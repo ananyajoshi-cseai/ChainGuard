@@ -16,20 +16,7 @@ from decision_engine import (
     tamper_severity,
 )
 
-
-# ------------------------------------------------------
-# Configuration
-# ------------------------------------------------------
-
-# ESP32 currently sends telemetry approximately every 3 sec.
-# This prevents one prolonged shake from becoming many shocks.
 SHOCK_COOLDOWN_SECONDS = 5
-
-
-ENVIRONMENTAL_EVENTS = {
-    "temperature",
-    "humidity",
-}
 
 
 def current_timestamp():
@@ -44,27 +31,16 @@ def detect_events(
     tamper_status: int,
     timestamp=None
 ):
-    """
-    Processes one telemetry reading.
-
-    Returns newly detected / completed events.
-
-    Environmental and tamper events are tracked as ongoing events.
-
-    Shock events are treated as individual events with a cooldown.
-    """
-
     if timestamp is None:
         timestamp = current_timestamp()
 
     detected_events = []
 
-    # ==================================================
+    # ---------------------------------------------------------
     # TEMPERATURE
-    # ==================================================
+    # ---------------------------------------------------------
 
     temp_severity = temperature_severity(temperature)
-
     temperature_event = get_active_event(
         shipment_id,
         "temperature"
@@ -111,9 +87,9 @@ def detect_events(
             "ended_at": closed["last_seen_at"]
         })
 
-    # ==================================================
+    # ---------------------------------------------------------
     # HUMIDITY
-    # ==================================================
+    # ---------------------------------------------------------
 
     humidity_severity_value = humidity_severity(humidity)
 
@@ -163,20 +139,25 @@ def detect_events(
             "ended_at": closed["last_seen_at"]
         })
 
-    # ==================================================
+    # ---------------------------------------------------------
     # SHOCK
-    # ==================================================
+    # ---------------------------------------------------------
 
-    shock_severity_value = shock_severity(acceleration)
+    shock_severity_value = shock_severity(
+        acceleration
+    )
 
     if shock_severity_value > 0:
 
-        state = get_shipment_state(shipment_id)
+        state = get_shipment_state(
+            shipment_id
+        )
 
-        last_shock_at = None
-
-        if state is not None:
-            last_shock_at = state["last_shock_at"]
+        last_shock_at = (
+            None
+            if state is None
+            else state["last_shock_at"]
+        )
 
         can_record_shock = True
 
@@ -206,9 +187,9 @@ def detect_events(
                 last_shock_at=timestamp.isoformat()
             )
 
-    # ==================================================
+    # ---------------------------------------------------------
     # TAMPER
-    # ==================================================
+    # ---------------------------------------------------------
 
     tamper_severity_value = tamper_severity(
         tamper_status
@@ -236,6 +217,15 @@ def detect_events(
                 "event_status": "started"
             })
 
+        else:
+
+            update_active_event(
+                shipment_id,
+                "tamper",
+                tamper_severity_value,
+                timestamp.isoformat()
+            )
+
     elif tamper_event is not None:
 
         closed = close_active_event(
@@ -251,9 +241,9 @@ def detect_events(
             "ended_at": closed["last_seen_at"]
         })
 
-    # --------------------------------------------------
-    # Save current tamper state
-    # --------------------------------------------------
+    # ---------------------------------------------------------
+    # SHIPMENT STATE
+    # ---------------------------------------------------------
 
     update_shipment_state(
         shipment_id,

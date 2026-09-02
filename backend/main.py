@@ -83,6 +83,41 @@ def health():
         "status": "healthy"
     }
 
+@app.get("/api/shipments/{shipment_id}/status")
+def shipment_status(shipment_id: str):
+
+    latest = get_latest_telemetry(shipment_id)
+
+    if latest is None:
+        return {
+            "shipment_id": shipment_id,
+            "device_status": "OFFLINE",
+            "last_seen": None
+        }
+
+    timestamp = datetime.fromisoformat(
+        latest["timestamp"]
+    )
+
+    seconds_since_last_seen = (
+        datetime.utcnow() - timestamp
+    ).total_seconds()
+
+    device_status = (
+        "ONLINE"
+        if seconds_since_last_seen <= 15
+        else "OFFLINE"
+    )
+
+    return {
+        "shipment_id": shipment_id,
+        "device_status": device_status,
+        "last_seen": latest["timestamp"],
+        "seconds_since_last_seen": round(
+            seconds_since_last_seen,
+            2
+        )
+    }
 
 # ======================================================
 # TELEMETRY
