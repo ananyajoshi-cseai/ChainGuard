@@ -142,14 +142,11 @@ void loop() {
   // BUILD JSON
   // =================================================
 
-  String jsonPayload =
-      "{"
-      "\"shipment_id\":\"" + String(shipmentId) + "\","
-      "\"temperature\":" + String(temperature, 2) + ","
-      "\"humidity\":" + String(humidity, 2) + ","
-      "\"acceleration\":" + String(totalAcceleration, 2) + ","
-      "\"tamper_status\":" + String(isTampered ? 1 : 0)
-      "}";
+String jsonPayload = "{\"shipment_id\":\"" + String(shipmentId) + "\","
+                     "\"temperature\":" + String(temperature) + ","
+                     "\"humidity\":" + String(humidity) + ","
+                     "\"acceleration\":" + String(totalAcceleration) + ","
+                     "\"tamper_status\":" + String(isTampered ? 1 : 0) + "}";
 
 
   Serial.println();
