@@ -15,7 +15,7 @@ const char* password = "";
 // IMPORTANT:
 // Replace this with your PUBLIC Render URL.
 const char* serverUrl =
-    "https://YOUR-URL.onrender.com/api/telemetry";
+    "https://chainguard-qpy6.onrender.com/api/telemetry";
 
 const char* shipmentId = "CG-1042";
 
