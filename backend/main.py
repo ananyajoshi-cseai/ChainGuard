@@ -20,6 +20,7 @@ from event_detector import detect_events
 from decision_engine import (
     calculate_event_risk,
     calculate_cumulative_risk,
+    calculate_risk_breakdown,
 )
 
 
