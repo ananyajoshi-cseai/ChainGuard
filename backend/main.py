@@ -1,14 +1,44 @@
+from datetime import datetime
+
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from database import (
     init_db,
     insert_telemetry,
-    get_latest_telemetry
+    insert_event,
+    get_latest_telemetry,
+    get_recent_telemetry,
+    get_recent_events,
+    get_all_events,
+    get_all_active_events,
 )
+
+from event_detector import detect_events
+
+from decision_engine import (
+    calculate_event_risk,
+    calculate_cumulative_risk,
+)
+
 
 app = FastAPI(title="ChainGuard API")
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://127.0.0.1:5500",
+        "http://localhost:5500"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ======================================================
+# REQUEST MODEL
+# ======================================================
 
 class SensorPayload(BaseModel):
     shipment_id: str
@@ -18,53 +48,354 @@ class SensorPayload(BaseModel):
     tamper_status: int
 
 
+# ======================================================
+# STARTUP
+# ======================================================
+
 @app.on_event("startup")
 def startup():
+
     init_db()
 
 
+# ======================================================
+# ROOT
+# ======================================================
+
 @app.get("/")
 def root():
+
     return {
         "status": "online",
         "service": "ChainGuard API"
     }
 
 
+# ======================================================
+# HEALTH
+# ======================================================
+
 @app.get("/health")
 def health():
+
     return {
         "status": "healthy"
     }
 
 
+# ======================================================
+# TELEMETRY
+# ======================================================
+
 @app.post("/api/telemetry")
 def receive_telemetry(data: SensorPayload):
 
-    insert_telemetry(
-        data.shipment_id,
-        data.temperature,
-        data.humidity,
-        data.acceleration,
-        data.tamper_status
+    now = datetime.utcnow()
+
+    # --------------------------------------------------
+    # 1. Store raw telemetry
+    # --------------------------------------------------
+
+    telemetry_id = insert_telemetry(
+        shipment_id=data.shipment_id,
+        temperature=data.temperature,
+        humidity=data.humidity,
+        acceleration=data.acceleration,
+        tamper_status=data.tamper_status
     )
+
+    # --------------------------------------------------
+    # 2. Detect events
+    # --------------------------------------------------
+
+    detected_events = detect_events(
+        shipment_id=data.shipment_id,
+        temperature=data.temperature,
+        humidity=data.humidity,
+        acceleration=data.acceleration,
+        tamper_status=data.tamper_status,
+        timestamp=now
+    )
+
+    # --------------------------------------------------
+    # 3. Store events that were detected/ended
+    # --------------------------------------------------
+
+    stored_events = []
+
+    for event in detected_events:
+
+        event_type = event["event_type"]
+
+        severity = event["severity"]
+
+        # ----------------------------------------------
+        # Shock
+        # ----------------------------------------------
+
+        if event_type == "shock":
+
+            risk = calculate_event_risk(
+                event_type="shock",
+                severity=severity,
+                frequency=1
+            )
+
+            event_id = insert_event(
+                shipment_id=data.shipment_id,
+                event_type=event_type,
+                severity=severity,
+                duration_seconds=0,
+                frequency=1,
+                risk_contribution=risk
+            )
+
+            stored_events.append({
+                "id": event_id,
+                "event_type": event_type,
+                "severity": severity,
+                "duration_seconds": 0,
+                "frequency": 1,
+                "risk_contribution": risk
+            })
+
+        # ----------------------------------------------
+        # Environmental / tamper event ended
+        # ----------------------------------------------
+
+        elif event.get("event_status") == "ended":
+
+            started_at = datetime.fromisoformat(
+                event["started_at"]
+            )
+
+            ended_at = datetime.fromisoformat(
+                event["ended_at"]
+            )
+
+            duration_seconds = max(
+                (
+                    ended_at - started_at
+                ).total_seconds(),
+                0
+            )
+
+            risk = calculate_event_risk(
+                event_type=event_type,
+                severity=severity,
+                duration_seconds=duration_seconds
+            )
+
+            event_id = insert_event(
+                shipment_id=data.shipment_id,
+                event_type=event_type,
+                severity=severity,
+                duration_seconds=duration_seconds,
+                frequency=1,
+                risk_contribution=risk
+            )
+
+            stored_events.append({
+                "id": event_id,
+                "event_type": event_type,
+                "severity": severity,
+                "duration_seconds": round(
+                    duration_seconds,
+                    2
+                ),
+                "frequency": 1,
+                "risk_contribution": round(
+                    risk,
+                    2
+                )
+            })
+
+    # --------------------------------------------------
+    # 4. Get complete shipment history
+    # --------------------------------------------------
+
+    completed_events = get_all_events(
+        data.shipment_id
+    )
+
+    active_events = get_all_active_events(
+        data.shipment_id
+    )
+
+    # --------------------------------------------------
+    # 5. Calculate cumulative decision
+    # --------------------------------------------------
+
+    decision = calculate_cumulative_risk(
+        completed_events=completed_events,
+        active_events=active_events,
+        now=now
+    )
+
+    # --------------------------------------------------
+    # 6. Return result
+    # --------------------------------------------------
 
     return {
         "status": "received",
         "shipment_id": data.shipment_id,
-        "message": "Telemetry stored successfully"
+        "telemetry_id": telemetry_id,
+
+        "integrity_score": decision[
+            "integrity_score"
+        ],
+
+        "risk_score": decision[
+            "risk_score"
+        ],
+
+        "decision": decision[
+            "status"
+        ],
+
+        "shock_frequency": decision[
+            "shock_frequency"
+        ],
+
+        "events_detected": detected_events,
+
+        "events_stored": stored_events
     }
 
 
-@app.get("/api/telemetry/latest/{shipment_id}")
+# ======================================================
+# LATEST TELEMETRY
+# ======================================================
+
+@app.get(
+    "/api/telemetry/latest/{shipment_id}"
+)
 def latest_telemetry(shipment_id: str):
 
-    telemetry = get_latest_telemetry(shipment_id)
+    telemetry = get_latest_telemetry(
+        shipment_id
+    )
 
     if telemetry is None:
+
         return {
             "status": "not_found",
             "shipment_id": shipment_id
         }
 
     return telemetry
+
+
+# ======================================================
+# RECENT TELEMETRY
+# ======================================================
+
+@app.get(
+    "/api/telemetry/{shipment_id}"
+)
+def recent_telemetry(shipment_id: str):
+
+    telemetry = get_recent_telemetry(
+        shipment_id
+    )
+
+    return {
+        "shipment_id": shipment_id,
+        "telemetry": telemetry
+    }
+
+
+# ======================================================
+# EVENTS
+# ======================================================
+
+@app.get(
+    "/api/events/{shipment_id}"
+)
+def recent_events(shipment_id: str):
+
+    events = get_recent_events(
+        shipment_id
+    )
+
+    return {
+        "shipment_id": shipment_id,
+        "events": events
+    }
+
+
+# ======================================================
+# ACTIVE EVENTS
+# ======================================================
+
+@app.get(
+    "/api/events/{shipment_id}/active"
+)
+def active_events(shipment_id: str):
+
+    events = get_all_active_events(
+        shipment_id
+    )
+
+    return {
+        "shipment_id": shipment_id,
+        "active_events": events
+    }
+
+
+# ======================================================
+# SHIPMENT SUMMARY
+# ======================================================
+
+@app.get(
+    "/api/shipments/{shipment_id}/summary"
+)
+def shipment_summary(shipment_id: str):
+
+    latest = get_latest_telemetry(
+        shipment_id
+    )
+
+    completed_events = get_all_events(
+        shipment_id
+    )
+
+    active_events = get_all_active_events(
+        shipment_id
+    )
+
+    decision = calculate_cumulative_risk(
+        completed_events=completed_events,
+        active_events=active_events,
+        now=datetime.utcnow()
+    )
+
+    return {
+        "shipment_id": shipment_id,
+
+        "integrity_score": decision[
+            "integrity_score"
+        ],
+
+        "risk_score": decision[
+            "risk_score"
+        ],
+
+        "status": decision[
+            "status"
+        ],
+
+        "shock_frequency": decision[
+            "shock_frequency"
+        ],
+
+        "latest_telemetry": latest,
+
+        "total_completed_events": len(
+            completed_events
+        ),
+
+        "active_events": active_events,
+
+        "event_history": completed_events
+    }
