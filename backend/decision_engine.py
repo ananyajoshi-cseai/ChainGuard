@@ -413,6 +413,68 @@ def calculate_cumulative_risk(
         "shock_frequency": shock_count
     }
 
+def calculate_risk_breakdown(completed_events, active_events, now):
+    breakdown = {
+        "temperature": 0.0,
+        "humidity": 0.0,
+        "shock": 0.0,
+        "tamper": 0.0
+    }
+
+    shock_count = sum(
+        1 for event in completed_events
+        if event["event_type"] == "shock"
+    )
+
+    # Completed events
+    for event in completed_events:
+        event_type = event["event_type"]
+        severity = event["severity"]
+
+        if event_type == "shock":
+            risk = calculate_event_risk(
+                event_type="shock",
+                severity=severity,
+                frequency=shock_count
+            )
+        else:
+            risk = calculate_event_risk(
+                event_type=event_type,
+                severity=severity,
+                duration_seconds=event["duration_seconds"],
+                frequency=event["frequency"]
+            )
+
+        breakdown[event_type] += risk
+
+    # Active events
+    for event in active_events:
+        event_type = event["event_type"]
+        severity = event["severity"]
+
+        started_at = parse_timestamp(event["started_at"])
+        duration_seconds = max(
+            (now - started_at).total_seconds(),
+            0
+        )
+
+        risk = calculate_event_risk(
+            event_type=event_type,
+            severity=severity,
+            duration_seconds=duration_seconds,
+            frequency=1
+        )
+
+        breakdown[event_type] += risk
+
+    # Keep displayed values clean
+    for event_type in breakdown:
+        breakdown[event_type] = round(
+            min(breakdown[event_type], 100),
+            2
+        )
+
+    return breakdown
 
 # ======================================================
 # TIMESTAMP HELPER
