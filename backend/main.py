@@ -120,7 +120,15 @@ def shipment_status(shipment_id: str):
             2
         )
     }
+@app.delete("/api/shipments/{shipment_id}/reset")
+def reset_shipment_data(shipment_id: str):
+    reset_shipment(shipment_id)
 
+    return {
+        "status": "reset",
+        "shipment_id": shipment_id,
+        "message": "Shipment telemetry and event history cleared"
+    }
 # ======================================================
 # TELEMETRY
 # ======================================================
