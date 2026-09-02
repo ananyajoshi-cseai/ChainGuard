@@ -251,19 +251,16 @@ def receive_telemetry(data: SensorPayload):
     # 4. Get complete shipment history
     # --------------------------------------------------
 
-    completed_events = get_all_events(
-        data.shipment_id
-    )
-
-    active_events = get_all_active_events(
-        data.shipment_id
-    )
-
-    # --------------------------------------------------
-    # 5. Calculate cumulative decision
-    # --------------------------------------------------
+    completed_events = get_all_events(data.shipment_id)
+    active_events = get_all_active_events(data.shipment_id)
 
     decision = calculate_cumulative_risk(
+        completed_events=completed_events,
+        active_events=active_events,
+        now=now
+    )
+
+    risk_breakdown = calculate_risk_breakdown(
         completed_events=completed_events,
         active_events=active_events,
         now=now
@@ -274,30 +271,17 @@ def receive_telemetry(data: SensorPayload):
     # --------------------------------------------------
 
     return {
-        "status": "received",
-        "shipment_id": data.shipment_id,
-        "telemetry_id": telemetry_id,
-
-        "integrity_score": decision[
-            "integrity_score"
-        ],
-
-        "risk_score": decision[
-            "risk_score"
-        ],
-
-        "decision": decision[
-            "status"
-        ],
-
-        "shock_frequency": decision[
-            "shock_frequency"
-        ],
-
-        "events_detected": detected_events,
-
-        "events_stored": stored_events
-    }
+    "status": "received",
+    "shipment_id": data.shipment_id,
+    "telemetry_id": telemetry_id,
+    "integrity_score": decision["integrity_score"],
+    "risk_score": decision["risk_score"],
+    "decision": decision["status"],
+    "shock_frequency": decision["shock_frequency"],
+    "risk_breakdown": risk_breakdown,
+    "events_detected": detected_events,
+    "events_stored": stored_events
+}
 
 
 # ======================================================
