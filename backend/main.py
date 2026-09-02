@@ -385,38 +385,29 @@ def shipment_summary(shipment_id: str):
         shipment_id
     )
 
+    now = datetime.utcnow()
+
     decision = calculate_cumulative_risk(
         completed_events=completed_events,
         active_events=active_events,
-        now=datetime.utcnow()
+        now=now
+    )
+
+    risk_breakdown = calculate_risk_breakdown(
+        completed_events=completed_events,
+        active_events=active_events,
+        now=now
     )
 
     return {
-        "shipment_id": shipment_id,
-
-        "integrity_score": decision[
-            "integrity_score"
-        ],
-
-        "risk_score": decision[
-            "risk_score"
-        ],
-
-        "status": decision[
-            "status"
-        ],
-
-        "shock_frequency": decision[
-            "shock_frequency"
-        ],
-
-        "latest_telemetry": latest,
-
-        "total_completed_events": len(
-            completed_events
-        ),
-
-        "active_events": active_events,
-
-        "event_history": completed_events
+    "shipment_id": shipment_id,
+    "integrity_score": decision["integrity_score"],
+    "risk_score": decision["risk_score"],
+    "status": decision["status"],
+    "shock_frequency": decision["shock_frequency"],
+    "risk_breakdown": risk_breakdown,
+    "latest_telemetry": latest,
+    "total_completed_events": len(completed_events),
+    "active_events": active_events,
+    "event_history": completed_events
     }
