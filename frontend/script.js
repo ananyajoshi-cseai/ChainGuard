@@ -1190,9 +1190,7 @@ function getLiveDurationSeconds(
 }
 
 
-function updateDeviceStatus(
-    timestamp
-) {
+function updateDeviceStatus(timestamp) {
 
     if (
         !deviceStatusElement ||
@@ -1201,6 +1199,14 @@ function updateDeviceStatus(
         return;
     }
 
+    /*
+       Device status is based on the age of the
+       last successfully received telemetry.
+
+       Cirkit Simulator can pause/throttle when its
+       browser tab is inactive, so we allow a wider
+       window before declaring the device offline.
+    */
 
     if (!timestamp) {
 
@@ -1223,16 +1229,12 @@ function updateDeviceStatus(
         return;
     }
 
-
     const date =
-        parseBackendTimestamp(
-            timestamp
-        );
+        parseBackendTimestamp(timestamp);
 
     if (!date) {
         return;
     }
-
 
     const ageSeconds =
         (
@@ -1240,11 +1242,19 @@ function updateDeviceStatus(
             date.getTime()
         ) / 1000;
 
+    /*
+       Status thresholds:
+
+       0–30 sec   → ONLINE
+       30–60 sec  → OFFLINE
+
+       This gives the simulator some tolerance for
+       temporary network/browser-tab delays.
+    */
 
     const isOnline =
         ageSeconds >= 0 &&
-        ageSeconds <= 15;
-
+        ageSeconds <= 30;
 
     deviceStatusElement.classList.remove(
         "online",
@@ -1257,14 +1267,12 @@ function updateDeviceStatus(
             : "offline"
     );
 
-
     deviceStatusDot.className =
         `mini-dot ${
             isOnline
                 ? "online"
                 : "offline"
         }`;
-
 
     setDeviceStatusText(
         isOnline
