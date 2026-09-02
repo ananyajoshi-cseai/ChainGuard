@@ -11,7 +11,7 @@
 // LIVE BACKEND
 const API_BASE = "https://chainguard-qpy6.onrender.com";
 
-let currentShipment = "CG-1042";
+let currentShipment = "LIVE-001";
 
 let environmentChart = null;
 let integrityChart = null;
