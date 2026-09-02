@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>ChainGuard — Shipment Control</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap"
+        rel="stylesheet"
+    >
+
+    <link rel="stylesheet" href="style.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+
+<div class="app-shell">
+
+    <!-- =====================================================
+         SIDEBAR
+    ====================================================== -->
+
+    <aside class="sidebar">
+
+        <div class="brand">
+            <div class="brand-mark">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+
+            <div>
+                <div class="brand-name">CHAINGUARD</div>
+                <div class="brand-subtitle">SHIPMENT CONTROL</div>
+            </div>
+        </div>
+
+
+        <nav class="navigation">
+
+            <div class="nav-label">MONITORING</div>
+
+            <button class="nav-item active">
+                <span class="nav-icon">◈</span>
+                <span>Live Shipment</span>
+            </button>
+
+            <button class="nav-item">
+                <span class="nav-icon">◫</span>
+                <span>Event History</span>
+            </button>
+
+            <button class="nav-item">
+                <span class="nav-icon">⌁</span>
+                <span>Telemetry</span>
+            </button>
+
+            <div class="nav-label">SYSTEM</div>
+
+            <button class="nav-item">
+                <span class="nav-icon">◉</span>
+                <span>Device Status</span>
+            </button>
+
+            <button class="nav-item">
+                <span class="nav-icon">⚙</span>
+                <span>Configuration</span>
+            </button>
+
+        </nav>
+
+
+        <div class="sidebar-footer">
+
+            <div class="system-status">
+                <span class="status-dot"></span>
+
+                <div>
+                    <div class="system-status-title">SYSTEM ONLINE</div>
+                    <div class="system-status-subtitle">
+                        API CONNECTION ACTIVE
+                    </div>
+                </div>
+            </div>
+
+            <div class="version">
+                CHAINGUARD / MVP 1.0
+            </div>
+
+        </div>
+
+    </aside>
+
+
+    <!-- =====================================================
+         MAIN CONTENT
+    ====================================================== -->
+
+    <main class="main-content">
+
+        <!-- HEADER -->
+
+        <header class="topbar">
+
+            <div>
+                <div class="eyebrow">
+                    SHIPMENT MONITORING / LIVE CONSOLE
+                </div>
+
+                <h1>Shipment Control Center</h1>
+            </div>
+
+
+            <div class="topbar-actions">
+
+                <div class="connection-pill">
+                    <span class="live-dot"></span>
+                    LIVE
+                </div>
+
+                <div class="shipment-selector">
+
+                    <span class="selector-label">
+                        SHIPMENT
+                    </span>
+
+                    <input
+                        id="shipmentInput"
+                        type="text"
+                        value="CG-1042"
+                        autocomplete="off"
+                    >
+
+                    <button id="loadShipment">
+                        LOAD
+                    </button>
+
+                </div>
+
+            </div>
+
+        </header>
+
+
+        <!-- SHIPMENT META -->
+
+        <section class="shipment-meta">
+
+            <div class="meta-block">
+
+                <span class="meta-label">
+                    CURRENT SHIPMENT
+                </span>
+
+                <span
+                    class="meta-value mono"
+                    id="shipmentId"
+                >
+                    CG-1042
+                </span>
+
+            </div>
+
+
+            <div class="meta-divider"></div>
+
+
+            <div class="meta-block">
+
+                <span class="meta-label">
+                    LAST TELEMETRY
+                </span>
+
+                <span
+                    class="meta-value mono"
+                    id="lastUpdated"
+                >
+                    WAITING...
+                </span>
+
+            </div>
+
+
+            <div class="meta-divider"></div>
+
+
+            <div class="meta-block">
+
+                <span class="meta-label">
+                    DEVICE
+                </span>
+
+                <span class="meta-value device-state">
+                    <span class="mini-dot"></span>
+                    CONNECTED
+                </span>
+
+            </div>
+
+        </section>
+
+
+        <!-- =================================================
+             HERO GRID
+        ================================================== -->
+
+        <section class="hero-grid">
+
+            <!-- INTEGRITY SCORE -->
+
+            <article class="panel score-panel">
+
+                <div class="panel-header">
+
+                    <div>
+                        <span class="panel-kicker">
+                            SHIPMENT INTEGRITY
+                        </span>
+
+                        <h2>Overall Condition</h2>
+                    </div>
+
+                    <span class="panel-code">
+                        CG / 01
+                    </span>
+
+                </div>
+
+
+                <div class="score-content">
+
+                    <div class="score-ring">
+
+                        <svg viewBox="0 0 220 220">
+
+                            <circle
+                                class="ring-background"
+                                cx="110"
+                                cy="110"
+                                r="88"
+                            />
+
+                            <circle
+                                id="scoreRing"
+                                class="ring-progress"
+                                cx="110"
+                                cy="110"
+                                r="88"
+                            />
+
+                        </svg>
+
+                        <div class="score-center">
+
+                            <span
+                                id="integrityScore"
+                                class="score-number"
+                            >
+                                --
+                            </span>
+
+                            <span class="score-denominator">
+                                / 100
+                            </span>
+
+                            <span class="score-label">
+                                INTEGRITY
+                            </span>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="decision-area">
+
+                        <span class="panel-kicker">
+                            CURRENT DECISION
+                        </span>
+
+                        <div
+                            id="decisionBadge"
+                            class="decision-badge neutral"
+                        >
+                            WAITING
+                        </div>
+
+                        <p id="decisionDescription">
+                            Waiting for shipment telemetry.
+                        </p>
+
+                    </div>
+
+                </div>
+
+            </article>
+
+
+            <!-- RISK SUMMARY -->
+
+            <article class="panel risk-panel">
+
+                <div class="panel-header">
+
+                    <div>
+                        <span class="panel-kicker">
+                            RISK ANALYSIS
+                        </span>
+
+                        <h2>Condition Assessment</h2>
+                    </div>
+
+                    <span class="panel-code">
+                        CG / 02
+                    </span>
+
+                </div>
+
+
+                <div class="risk-main">
+
+                    <div class="risk-score">
+
+                        <span class="big-value" id="riskScore">
+                            --
+                        </span>
+
+                        <span class="big-unit">
+                            RISK
+                        </span>
+
+                    </div>
+
+
+                    <div class="risk-bars">
+
+                        <div class="risk-row">
+
+                            <div class="risk-row-label">
+                                <span>Temperature</span>
+                                <span id="tempRiskValue">0</span>
+                            </div>
+
+                            <div class="risk-track">
+                                <div
+                                    id="tempRiskBar"
+                                    class="risk-fill"
+                                ></div>
+                            </div>
+
+                        </div>
+
+
+                        <div class="risk-row">
+
+                            <div class="risk-row-label">
+                                <span>Humidity</span>
+                                <span id="humidityRiskValue">0</span>
+                            </div>
+
+                            <div class="risk-track">
+                                <div
+                                    id="humidityRiskBar"
+                                    class="risk-fill"
+                                ></div>
+                            </div>
+
+                        </div>
+
+
+                        <div class="risk-row">
+
+                            <div class="risk-row-label">
+                                <span>Shock</span>
+                                <span id="shockRiskValue">0</span>
+                            </div>
+
+                            <div class="risk-track">
+                                <div
+                                    id="shockRiskBar"
+                                    class="risk-fill"
+                                ></div>
+                            </div>
+
+                        </div>
+
+
+                        <div class="risk-row">
+
+                            <div class="risk-row-label">
+                                <span>Tamper</span>
+                                <span id="tamperRiskValue">0</span>
+                            </div>
+
+                            <div class="risk-track">
+                                <div
+                                    id="tamperRiskBar"
+                                    class="risk-fill"
+                                ></div>
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="risk-footer">
+
+                    <span>
+                        MODEL STATUS
+                    </span>
+
+                    <span class="model-active">
+                        ● DECISION ENGINE ACTIVE
+                    </span>
+
+                </div>
+
+            </article>
+
+        </section>
+
+
+        <!-- =================================================
+             TELEMETRY CARDS
+        ================================================== -->
+
+        <section class="section-block">
+
+            <div class="section-heading">
+
+                <div>
+                    <span class="section-kicker">
+                        SENSOR TELEMETRY
+                    </span>
+
+                    <h2>Live Conditions</h2>
+                </div>
+
+                <span class="refresh-text">
+                    AUTO REFRESH / 5 SEC
+                </span>
+
+            </div>
+
+
+            <div class="telemetry-grid">
+
+                <!-- TEMPERATURE -->
+
+                <article class="telemetry-card">
+
+                    <div class="telemetry-top">
+
+                        <span class="telemetry-label">
+                            TEMPERATURE
+                        </span>
+
+                        <span class="telemetry-icon">
+                            °C
+                        </span>
+
+                    </div>
+
+                    <div class="telemetry-value">
+
+                        <span id="temperature">
+                            --
+                        </span>
+
+                        <small>°C</small>
+
+                    </div>
+
+                    <div class="telemetry-status">
+                        <span id="temperatureStatusDot"></span>
+                        <span id="temperatureStatus">
+                            NO DATA
+                        </span>
+                    </div>
+
+                </article>
+
+
+                <!-- HUMIDITY -->
+
+                <article class="telemetry-card">
+
+                    <div class="telemetry-top">
+
+                        <span class="telemetry-label">
+                            HUMIDITY
+                        </span>
+
+                        <span class="telemetry-icon">
+                            %
+                        </span>
+
+                    </div>
+
+                    <div class="telemetry-value">
+
+                        <span id="humidity">
+                            --
+                        </span>
+
+                        <small>% RH</small>
+
+                    </div>
+
+                    <div class="telemetry-status">
+                        <span id="humidityStatusDot"></span>
+                        <span id="humidityStatus">
+                            NO DATA
+                        </span>
+                    </div>
+
+                </article>
+
+
+                <!-- ACCELERATION -->
+
+                <article class="telemetry-card">
+
+                    <div class="telemetry-top">
+
+                        <span class="telemetry-label">
+                            ACCELERATION
+                        </span>
+
+                        <span class="telemetry-icon">
+                            G
+                        </span>
+
+                    </div>
+
+                    <div class="telemetry-value">
+
+                        <span id="acceleration">
+                            --
+                        </span>
+
+                        <small>m/s²</small>
+
+                    </div>
+
+                    <div class="telemetry-status">
+                        <span id="accelerationStatusDot"></span>
+                        <span id="accelerationStatus">
+                            NO DATA
+                        </span>
+                    </div>
+
+                </article>
+
+
+                <!-- TAMPER -->
+
+                <article class="telemetry-card">
+
+                    <div class="telemetry-top">
+
+                        <span class="telemetry-label">
+                            ENCLOSURE
+                        </span>
+
+                        <span class="telemetry-icon">
+                            ◇
+                        </span>
+
+                    </div>
+
+                    <div class="telemetry-value enclosure-value">
+
+                        <span id="tamperStatus">
+                            --
+                        </span>
+
+                    </div>
+
+                    <div class="telemetry-status">
+                        <span id="tamperStatusDot"></span>
+                        <span id="tamperStatusText">
+                            NO DATA
+                        </span>
+                    </div>
+
+                </article>
+
+            </div>
+
+        </section>
+
+
+        <!-- =================================================
+             CHARTS
+        ================================================== -->
+
+        <section class="charts-grid">
+
+            <article class="panel chart-panel large-chart">
+
+                <div class="panel-header">
+
+                    <div>
+                        <span class="panel-kicker">
+                            HISTORICAL TELEMETRY
+                        </span>
+
+                        <h2>Environmental Conditions</h2>
+                    </div>
+
+                    <div class="chart-legend">
+
+                        <span>
+                            <i class="legend-temp"></i>
+                            TEMP
+                        </span>
+
+                        <span>
+                            <i class="legend-humidity"></i>
+                            HUMIDITY
+                        </span>
+
+                    </div>
+
+                </div>
+
+                <div class="chart-container">
+                    <canvas id="environmentChart"></canvas>
+                </div>
+
+            </article>
+
+
+            <article class="panel chart-panel">
+
+                <div class="panel-header">
+
+                    <div>
+                        <span class="panel-kicker">
+                            INTEGRITY TREND
+                        </span>
+
+                        <h2>Risk Over Time</h2>
+                    </div>
+
+                    <span class="panel-code">
+                        LIVE
+                    </span>
+
+                </div>
+
+                <div class="chart-container">
+                    <canvas id="integrityChart"></canvas>
+                </div>
+
+            </article>
+
+        </section>
+
+
+        <!-- =================================================
+             EVENT HISTORY
+        ================================================== -->
+
+        <section class="section-block">
+
+            <div class="section-heading">
+
+                <div>
+                    <span class="section-kicker">
+                        EVENT LOG
+                    </span>
+
+                    <h2>Shipment History</h2>
+                </div>
+
+                <div class="event-counter">
+                    <span id="eventCount">0</span>
+                    EVENTS
+                </div>
+
+            </div>
+
+
+            <article class="panel event-panel">
+
+                <div class="event-table-header">
+
+                    <span>TIME</span>
+                    <span>EVENT</span>
+                    <span>SEVERITY</span>
+                    <span>DURATION</span>
+                    <span>RISK</span>
+
+                </div>
+
+
+                <div id="eventList" class="event-list">
+
+                    <div class="empty-events">
+                        NO EVENTS RECORDED
+                    </div>
+
+                </div>
+
+            </article>
+
+        </section>
+
+
+        <!-- =================================================
+             FOOTER
+        ================================================== -->
+
+        <footer class="dashboard-footer">
+
+            <div>
+                CHAINGUARD DIGITAL BLACK BOX
+            </div>
+
+            <div>
+                FASTAPI / SQLITE / ESP32
+            </div>
+
+            <div>
+                <span class="footer-live-dot"></span>
+                SYSTEM OPERATIONAL
+            </div>
+
+        </footer>
+
+    </main>
+
+</div>
+
+
+<div id="toast" class="toast">
+    <span class="toast-dot"></span>
+    <span id="toastMessage">Updated</span>
+</div>
+
+
+<script src="script.js"></script>
+
+</body>
+</html>

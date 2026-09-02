@@ -17,7 +17,7 @@ const char* password = "";
 const char* serverUrl =
     "https://chainguard-qpy6.onrender.com/api/telemetry";
 
-const char* shipmentId = "CG-1042";
+const char* shipmentId = "LIVE-001";
 
 
 // =====================================================
