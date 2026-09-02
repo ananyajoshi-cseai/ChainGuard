@@ -678,174 +678,35 @@ function setStatusClass(
 
 function updateRiskBreakdown(summary) {
 
-    const events =
-        summary.event_history || [];
+    if (
+        !summary ||
+        !summary.risk_breakdown
+    ) {
+        return;
+    }
 
-    const activeEvents =
-        summary.active_events || [];
+    const breakdown =
+        summary.risk_breakdown;
 
-    let temperatureRisk = 0;
-    let humidityRisk = 0;
-    let shockRisk = 0;
-    let tamperRisk = 0;
+    const temperatureRisk =
+        Number(
+            breakdown.temperature || 0
+        );
 
+    const humidityRisk =
+        Number(
+            breakdown.humidity || 0
+        );
 
-    events.forEach(event => {
+    const shockRisk =
+        Number(
+            breakdown.shock || 0
+        );
 
-        const risk =
-            Number(
-                event.risk_contribution || 0
-            );
-
-        switch (
-            event.event_type
-        ) {
-
-            case "temperature":
-
-                temperatureRisk +=
-                    risk;
-
-                break;
-
-            case "humidity":
-
-                humidityRisk +=
-                    risk;
-
-                break;
-
-            case "shock":
-
-                shockRisk +=
-                    risk;
-
-                break;
-
-            case "tamper":
-
-                tamperRisk +=
-                    risk;
-
-                break;
-        }
-    });
-
-
-    /*
-       Active environmental/tamper events are not yet stored in
-       event_history, but their risk is already included in the
-       backend cumulative integrity score. Estimate their live
-       contribution from the current active-event record.
-    */
-
-    activeEvents.forEach(event => {
-
-        const severity =
-            Number(
-                event.severity || 0
-            );
-
-        const startedAt =
-            parseBackendTimestamp(
-                event.started_at
-            );
-
-        const durationSeconds =
-            startedAt
-                ? Math.max(
-                    (
-                        Date.now() -
-                        startedAt.getTime()
-                    ) / 1000,
-                    0
-                )
-                : 0;
-
-        let risk = 0;
-
-        const weights = {
-            temperature: 8,
-            humidity: 3,
-            tamper: 15
-        };
-
-
-        if (
-            Object.prototype.hasOwnProperty.call(
-                weights,
-                event.event_type
-            )
-        ) {
-
-            const durationMinutes =
-                durationSeconds / 60;
-
-            let multiplier = 1;
-
-
-            if (
-                durationMinutes >= 1 &&
-                durationMinutes <= 5
-            ) {
-
-                multiplier = 1.25;
-
-            } else if (
-                durationMinutes > 5 &&
-                durationMinutes <= 15
-            ) {
-
-                multiplier = 1.5;
-
-            } else if (
-                durationMinutes > 15 &&
-                durationMinutes <= 30
-            ) {
-
-                multiplier = 2;
-
-            } else if (
-                durationMinutes > 30
-            ) {
-
-                multiplier = 2.5;
-            }
-
-
-            risk =
-                weights[event.event_type] *
-                severity *
-                multiplier;
-        }
-
-
-        switch (
-            event.event_type
-        ) {
-
-            case "temperature":
-
-                temperatureRisk +=
-                    risk;
-
-                break;
-
-            case "humidity":
-
-                humidityRisk +=
-                    risk;
-
-                break;
-
-            case "tamper":
-
-                tamperRisk +=
-                    risk;
-
-                break;
-        }
-    });
+    const tamperRisk =
+        Number(
+            breakdown.tamper || 0
+        );
 
 
     updateRiskBar(
@@ -872,7 +733,6 @@ function updateRiskBreakdown(summary) {
         tamperRisk
     );
 }
-
 
 function updateRiskBar(
     valueId,
