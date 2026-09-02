@@ -8,14 +8,8 @@
    CONFIGURATION
 ------------------------------------------------------------ */
 
-// LOCAL BACKEND
+// LIVE BACKEND
 const API_BASE = "https://chainguard-qpy6.onrender.com";
-
-// When the backend is deployed and frontend is hosted separately,
-// change the line above to:
-//
-// const API_BASE = "https://chainguard-qpy6.onrender.com";
-
 
 let currentShipment = "CG-1042";
 
@@ -27,11 +21,17 @@ let integrityChart = null;
    DOM REFERENCES
 ------------------------------------------------------------ */
 
-const shipmentInput = document.getElementById("shipmentInput");
-const loadShipmentButton = document.getElementById("loadShipment");
+const shipmentInput =
+    document.getElementById("shipmentInput");
 
-const shipmentIdElement = document.getElementById("shipmentId");
-const lastUpdatedElement = document.getElementById("lastUpdated");
+const loadShipmentButton =
+    document.getElementById("loadShipment");
+
+const shipmentIdElement =
+    document.getElementById("shipmentId");
+
+const lastUpdatedElement =
+    document.getElementById("lastUpdated");
 
 const integrityScoreElement =
     document.getElementById("integrityScore");
@@ -47,6 +47,14 @@ const decisionDescription =
 
 const scoreRing =
     document.getElementById("scoreRing");
+
+const deviceStatusElement =
+    document.getElementById("deviceStatus");
+
+const deviceStatusDot =
+    document.getElementById("deviceStatusDot");
+
+let previousCompletedEventCount = 0;
 
 
 /* ------------------------------------------------------------
@@ -69,7 +77,10 @@ function formatTime(timestamp) {
         return "WAITING...";
     }
 
-    const date = new Date(timestamp.replace(" ", "T") + "Z");
+    const date =
+        new Date(
+            timestamp.replace(" ", "T") + "Z"
+        );
 
     if (Number.isNaN(date.getTime())) {
         return timestamp;
@@ -85,8 +96,15 @@ function formatTime(timestamp) {
 
 function showToast(message) {
 
-    const toast = document.getElementById("toast");
-    const toastMessage = document.getElementById("toastMessage");
+    const toast =
+        document.getElementById("toast");
+
+    const toastMessage =
+        document.getElementById("toastMessage");
+
+    if (!toast || !toastMessage) {
+        return;
+    }
 
     toastMessage.textContent = message;
 
@@ -104,9 +122,11 @@ function showToast(message) {
 
 async function fetchJSON(url) {
 
-    const response = await fetch(url);
+    const response =
+        await fetch(url);
 
     if (!response.ok) {
+
         throw new Error(
             `API request failed: ${response.status}`
         );
@@ -122,35 +142,48 @@ async function fetchJSON(url) {
 
 async function loadShipment(shipmentId) {
 
-    currentShipment = shipmentId.trim();
+    currentShipment =
+        shipmentId.trim();
 
     if (!currentShipment) {
         return;
     }
 
-    shipmentIdElement.textContent = currentShipment;
+    shipmentIdElement.textContent =
+        currentShipment;
+
+    previousCompletedEventCount = 0;
 
     try {
 
-        const summary = await fetchJSON(
-            `${API_BASE}/api/shipments/${encodeURIComponent(currentShipment)}/summary`
-        );
+        const summary =
+            await fetchJSON(
+                `${API_BASE}/api/shipments/${encodeURIComponent(currentShipment)}/summary`
+            );
 
         updateDashboard(summary);
 
-        const telemetry = await fetchJSON(
-            `${API_BASE}/api/telemetry/${encodeURIComponent(currentShipment)}`
+        const telemetry =
+            await fetchJSON(
+                `${API_BASE}/api/telemetry/${encodeURIComponent(currentShipment)}`
+            );
+
+        updateCharts(
+            telemetry.telemetry || []
         );
 
-        updateCharts(telemetry.telemetry || []);
-
-        updateEvents(summary.event_history || []);
+        updateEvents(
+            summary.event_history || [],
+            summary.active_events || []
+        );
 
     } catch (error) {
 
         console.error(error);
 
-        showToast("Unable to load shipment data");
+        showToast(
+            "Unable to load shipment data"
+        );
 
         resetDashboard();
     }
@@ -163,13 +196,17 @@ async function loadShipment(shipmentId) {
 
 function updateDashboard(summary) {
 
-    const score = Number(summary.integrity_score ?? 0);
+    const score =
+        Number(summary.integrity_score ?? 0);
 
-    const risk = Number(summary.risk_score ?? 0);
+    const risk =
+        Number(summary.risk_score ?? 0);
 
-    const status = summary.status || "UNKNOWN";
+    const status =
+        summary.status || "UNKNOWN";
 
-    const telemetry = summary.latest_telemetry;
+    const telemetry =
+        summary.latest_telemetry;
 
 
     /* SCORE */
@@ -186,9 +223,11 @@ function updateDashboard(summary) {
     const circumference = 552;
 
     const offset =
-        circumference - (score / 100) * circumference;
+        circumference -
+        (score / 100) * circumference;
 
-    scoreRing.style.strokeDashoffset = offset;
+    scoreRing.style.strokeDashoffset =
+        offset;
 
 
     /* DECISION */
@@ -212,13 +251,68 @@ function updateDashboard(summary) {
     updateRiskBreakdown(summary);
 
 
-    /* EVENT COUNT */
+    /* EVENT COUNT + ACTIVE EVENTS */
 
     const eventCount =
-        summary.total_completed_events || 0;
+        Number(
+            summary.total_completed_events || 0
+        );
 
-    document.getElementById("eventCount").textContent =
+    const activeEvents =
+        summary.active_events || [];
+
+    const eventCountElement =
+        document.getElementById("eventCount");
+
+    const activeEventCountElement =
+        document.getElementById(
+            "activeEventCount"
+        );
+
+    if (eventCountElement) {
+
+        eventCountElement.textContent =
+            eventCount;
+    }
+
+    if (activeEventCountElement) {
+
+        activeEventCountElement.textContent =
+            `${activeEvents.length} ACTIVE`;
+    }
+
+
+    /* NEW EVENT NOTIFICATION */
+
+    if (
+        previousCompletedEventCount > 0 &&
+        eventCount > previousCompletedEventCount
+    ) {
+
+        showToast(
+            "New shipment event recorded"
+        );
+    }
+
+    previousCompletedEventCount =
         eventCount;
+
+
+    /* DEVICE STATUS */
+
+    if (
+        telemetry &&
+        telemetry.timestamp
+    ) {
+
+        updateDeviceStatus(
+            telemetry.timestamp
+        );
+
+    } else {
+
+        updateDeviceStatus(null);
+    }
 }
 
 
@@ -228,13 +322,18 @@ function updateDashboard(summary) {
 
 function updateDecision(status) {
 
-    decisionBadge.className = "decision-badge";
+    decisionBadge.className =
+        "decision-badge";
+
 
     if (status === "ACCEPT") {
 
-        decisionBadge.classList.add("accept");
+        decisionBadge.classList.add(
+            "accept"
+        );
 
-        decisionBadge.textContent = "ACCEPT";
+        decisionBadge.textContent =
+            "ACCEPT";
 
         decisionDescription.textContent =
             "Shipment conditions remain within the configured monitoring limits.";
@@ -245,9 +344,12 @@ function updateDecision(status) {
 
     if (status === "INSPECT") {
 
-        decisionBadge.classList.add("inspect");
+        decisionBadge.classList.add(
+            "inspect"
+        );
 
-        decisionBadge.textContent = "INSPECT";
+        decisionBadge.textContent =
+            "INSPECT";
 
         decisionDescription.textContent =
             "One or more recorded conditions require shipment inspection.";
@@ -258,9 +360,12 @@ function updateDecision(status) {
 
     if (status === "HIGH RISK") {
 
-        decisionBadge.classList.add("high-risk");
+        decisionBadge.classList.add(
+            "high-risk"
+        );
 
-        decisionBadge.textContent = "HIGH RISK";
+        decisionBadge.textContent =
+            "HIGH RISK";
 
         decisionDescription.textContent =
             "Cumulative condition risk has crossed the configured high-risk threshold.";
@@ -269,9 +374,12 @@ function updateDecision(status) {
     }
 
 
-    decisionBadge.classList.add("neutral");
+    decisionBadge.classList.add(
+        "neutral"
+    );
 
-    decisionBadge.textContent = status;
+    decisionBadge.textContent =
+        status;
 }
 
 
@@ -296,73 +404,116 @@ function updateTelemetry(telemetry) {
 
     /* TEMPERATURE */
 
-    document.getElementById("temperature").textContent =
-        formatNumber(temperature, 1);
+    document.getElementById(
+        "temperature"
+    ).textContent =
+        formatNumber(
+            temperature,
+            1
+        );
 
     updateSensorStatus(
         "temperatureStatus",
         "temperatureStatusDot",
-        getTemperatureState(temperature)
+        getTemperatureState(
+            temperature
+        )
     );
 
 
     /* HUMIDITY */
 
-    document.getElementById("humidity").textContent =
-        formatNumber(humidity, 1);
+    document.getElementById(
+        "humidity"
+    ).textContent =
+        formatNumber(
+            humidity,
+            1
+        );
 
     updateSensorStatus(
         "humidityStatus",
         "humidityStatusDot",
-        getHumidityState(humidity)
+        getHumidityState(
+            humidity
+        )
     );
 
 
     /* ACCELERATION */
 
-    document.getElementById("acceleration").textContent =
-        formatNumber(acceleration, 2);
+    document.getElementById(
+        "acceleration"
+    ).textContent =
+        formatNumber(
+            acceleration,
+            2
+        );
 
     updateSensorStatus(
         "accelerationStatus",
         "accelerationStatusDot",
-        getAccelerationState(acceleration)
+        getAccelerationState(
+            acceleration
+        )
     );
 
 
     /* TAMPER */
 
     const tamperStatus =
-        document.getElementById("tamperStatus");
+        document.getElementById(
+            "tamperStatus"
+        );
 
     const tamperText =
-        document.getElementById("tamperStatusText");
+        document.getElementById(
+            "tamperStatusText"
+        );
 
     const tamperDot =
-        document.getElementById("tamperStatusDot");
+        document.getElementById(
+            "tamperStatusDot"
+        );
 
 
     if (tamper === 1) {
 
-        tamperStatus.textContent = "OPEN";
+        tamperStatus.textContent =
+            "OPEN";
 
-        tamperText.textContent = "TAMPER DETECTED";
+        tamperText.textContent =
+            "TAMPER DETECTED";
 
         setStatusClass(
             tamperText.parentElement,
             "danger"
         );
 
+        if (tamperDot) {
+
+            tamperDot.className =
+                "mini-dot danger";
+        }
+
     } else {
 
-        tamperStatus.textContent = "SECURE";
+        tamperStatus.textContent =
+            "SECURE";
 
-        tamperText.textContent = "ENCLOSURE SECURE";
+        tamperText.textContent =
+            "ENCLOSURE SECURE";
 
         setStatusClass(
             tamperText.parentElement,
             "good"
         );
+
+        if (tamperDot) {
+
+            tamperDot.className =
+                "mini-dot good";
+        }
     }
 }
 
@@ -373,22 +524,29 @@ function updateTelemetry(telemetry) {
 
 function getTemperatureState(value) {
 
-    if (value >= 2 && value <= 8) {
+    if (
+        value >= 2 &&
+        value <= 8
+    ) {
+
         return {
             text: "WITHIN RANGE",
             className: "good"
         };
     }
 
+
     if (
         (value >= 0 && value < 2) ||
         (value > 8 && value <= 10)
     ) {
+
         return {
             text: "MINOR EXCURSION",
             className: "warning"
         };
     }
+
 
     return {
         text: "OUT OF RANGE",
@@ -399,22 +557,29 @@ function getTemperatureState(value) {
 
 function getHumidityState(value) {
 
-    if (value >= 30 && value <= 70) {
+    if (
+        value >= 30 &&
+        value <= 70
+    ) {
+
         return {
             text: "WITHIN RANGE",
             className: "good"
         };
     }
 
+
     if (
         (value >= 20 && value < 30) ||
         (value > 70 && value <= 80)
     ) {
+
         return {
             text: "MINOR EXCURSION",
             className: "warning"
         };
     }
+
 
     return {
         text: "OUT OF RANGE",
@@ -426,18 +591,22 @@ function getHumidityState(value) {
 function getAccelerationState(value) {
 
     if (value <= 2.5) {
+
         return {
             text: "NORMAL",
             className: "good"
         };
     }
 
+
     if (value <= 6) {
+
         return {
             text: "ELEVATED",
             className: "warning"
         };
     }
+
 
     return {
         text: "SHOCK DETECTED",
@@ -453,10 +622,18 @@ function updateSensorStatus(
 ) {
 
     const textElement =
-        document.getElementById(textId);
+        document.getElementById(
+            textId
+        );
 
     const dotElement =
-        document.getElementById(dotId);
+        document.getElementById(
+            dotId
+        );
+
+    if (!textElement) {
+        return;
+    }
 
     textElement.textContent =
         state.text;
@@ -466,15 +643,22 @@ function updateSensorStatus(
         state.className
     );
 
-    dotElement.className = "";
+    if (dotElement) {
 
-    dotElement.classList.add(
-        state.className
-    );
+        dotElement.className =
+            `mini-dot ${state.className}`;
+    }
 }
 
 
-function setStatusClass(element, className) {
+function setStatusClass(
+    element,
+    className
+) {
+
+    if (!element) {
+        return;
+    }
 
     element.classList.remove(
         "good",
@@ -482,7 +666,9 @@ function setStatusClass(element, className) {
         "danger"
     );
 
-    element.classList.add(className);
+    element.classList.add(
+        className
+    );
 }
 
 
@@ -495,6 +681,9 @@ function updateRiskBreakdown(summary) {
     const events =
         summary.event_history || [];
 
+    const activeEvents =
+        summary.active_events || [];
+
     let temperatureRisk = 0;
     let humidityRisk = 0;
     let shockRisk = 0;
@@ -504,24 +693,156 @@ function updateRiskBreakdown(summary) {
     events.forEach(event => {
 
         const risk =
-            Number(event.risk_contribution || 0);
+            Number(
+                event.risk_contribution || 0
+            );
 
-        switch (event.event_type) {
+        switch (
+            event.event_type
+        ) {
 
             case "temperature":
-                temperatureRisk += risk;
+
+                temperatureRisk +=
+                    risk;
+
                 break;
 
             case "humidity":
-                humidityRisk += risk;
+
+                humidityRisk +=
+                    risk;
+
                 break;
 
             case "shock":
-                shockRisk += risk;
+
+                shockRisk +=
+                    risk;
+
                 break;
 
             case "tamper":
-                tamperRisk += risk;
+
+                tamperRisk +=
+                    risk;
+
+                break;
+        }
+    });
+
+
+    /*
+       Active environmental/tamper events are not yet stored in
+       event_history, but their risk is already included in the
+       backend cumulative integrity score. Estimate their live
+       contribution from the current active-event record.
+    */
+
+    activeEvents.forEach(event => {
+
+        const severity =
+            Number(
+                event.severity || 0
+            );
+
+        const startedAt =
+            parseBackendTimestamp(
+                event.started_at
+            );
+
+        const durationSeconds =
+            startedAt
+                ? Math.max(
+                    (
+                        Date.now() -
+                        startedAt.getTime()
+                    ) / 1000,
+                    0
+                )
+                : 0;
+
+        let risk = 0;
+
+        const weights = {
+            temperature: 8,
+            humidity: 3,
+            tamper: 15
+        };
+
+
+        if (
+            Object.prototype.hasOwnProperty.call(
+                weights,
+                event.event_type
+            )
+        ) {
+
+            const durationMinutes =
+                durationSeconds / 60;
+
+            let multiplier = 1;
+
+
+            if (
+                durationMinutes >= 1 &&
+                durationMinutes <= 5
+            ) {
+
+                multiplier = 1.25;
+
+            } else if (
+                durationMinutes > 5 &&
+                durationMinutes <= 15
+            ) {
+
+                multiplier = 1.5;
+
+            } else if (
+                durationMinutes > 15 &&
+                durationMinutes <= 30
+            ) {
+
+                multiplier = 2;
+
+            } else if (
+                durationMinutes > 30
+            ) {
+
+                multiplier = 2.5;
+            }
+
+
+            risk =
+                weights[event.event_type] *
+                severity *
+                multiplier;
+        }
+
+
+        switch (
+            event.event_type
+        ) {
+
+            case "temperature":
+
+                temperatureRisk +=
+                    risk;
+
+                break;
+
+            case "humidity":
+
+                humidityRisk +=
+                    risk;
+
+                break;
+
+            case "tamper":
+
+                tamperRisk +=
+                    risk;
+
                 break;
         }
     });
@@ -559,14 +880,36 @@ function updateRiskBar(
     value
 ) {
 
-    document.getElementById(valueId).textContent =
-        formatNumber(value, 1);
+    const valueElement =
+        document.getElementById(
+            valueId
+        );
 
-    const percentage =
-        Math.min((value / 45) * 100, 100);
+    const barElement =
+        document.getElementById(
+            barId
+        );
 
-    document.getElementById(barId).style.width =
-        `${percentage}%`;
+    if (valueElement) {
+
+        valueElement.textContent =
+            formatNumber(
+                value,
+                1
+            );
+    }
+
+    if (barElement) {
+
+        const percentage =
+            Math.min(
+                (value / 45) * 100,
+                100
+            );
+
+        barElement.style.width =
+            `${percentage}%`;
+    }
 }
 
 
@@ -574,12 +917,35 @@ function updateRiskBar(
    EVENTS
 ------------------------------------------------------------ */
 
-function updateEvents(events) {
+function updateEvents(
+    events,
+    activeEvents = []
+) {
 
     const eventList =
-        document.getElementById("eventList");
+        document.getElementById(
+            "eventList"
+        );
 
-    if (!events.length) {
+    if (!eventList) {
+        return;
+    }
+
+    const completedEvents =
+        Array.isArray(events)
+            ? events
+            : [];
+
+    const currentlyActive =
+        Array.isArray(activeEvents)
+            ? activeEvents
+            : [];
+
+
+    if (
+        !completedEvents.length &&
+        !currentlyActive.length
+    ) {
 
         eventList.innerHTML = `
             <div class="empty-events">
@@ -591,69 +957,161 @@ function updateEvents(events) {
     }
 
 
+    const activeMarkup =
+        currentlyActive
+            .map(event => {
+
+                const severity =
+                    Number(
+                        event.severity || 0
+                    );
+
+                const eventType =
+                    event.event_type ||
+                    "unknown";
+
+                const startedAt =
+                    event.started_at ||
+                    event.last_seen_at;
+
+                const duration =
+                    getLiveDurationSeconds(
+                        startedAt
+                    );
+
+                return `
+                    <div class="event-row active-event-row">
+
+                        <span>
+                            ${formatTime(startedAt)}
+                        </span>
+
+                        <span class="event-type">
+
+                            <i class="event-marker danger pulse"></i>
+
+                            ${getEventIcon(eventType)}
+                            ${eventType.toUpperCase()}
+
+                        </span>
+
+                        <span>
+                            <span class="severity severity-${severity}">
+                                ${getSeverityLabel(severity)}
+                            </span>
+                        </span>
+
+                        <span>
+                            ${formatDuration(duration)}
+                        </span>
+
+                        <span class="risk-number">
+                            ACTIVE
+                        </span>
+
+                    </div>
+                `;
+
+            })
+            .join("");
+
+
     const sortedEvents =
-        [...events].reverse();
+        [...completedEvents]
+            .reverse();
+
+
+    const completedMarkup =
+        sortedEvents
+            .map(event => {
+
+                const severity =
+                    Number(
+                        event.severity || 0
+                    );
+
+                const eventType =
+                    event.event_type ||
+                    "unknown";
+
+                const duration =
+                    Number(
+                        event.duration_seconds ||
+                        0
+                    );
+
+                const risk =
+                    Number(
+                        event.risk_contribution ||
+                        0
+                    );
+
+
+                let markerClass =
+                    "good";
+
+
+                if (severity === 1) {
+
+                    markerClass =
+                        "warning";
+                }
+
+
+                if (severity === 2) {
+
+                    markerClass =
+                        "warning";
+                }
+
+
+                if (severity === 3) {
+
+                    markerClass =
+                        "danger";
+                }
+
+
+                return `
+                    <div class="event-row">
+
+                        <span>
+                            ${formatTime(event.timestamp)}
+                        </span>
+
+                        <span class="event-type">
+
+                            <i class="event-marker ${markerClass}"></i>
+
+                            ${getEventIcon(eventType)}
+                            ${eventType.toUpperCase()}
+
+                        </span>
+
+                        <span>
+                            <span class="severity severity-${severity}">
+                                ${getSeverityLabel(severity)}
+                            </span>
+                        </span>
+
+                        <span>
+                            ${formatDuration(duration)}
+                        </span>
+
+                        <span class="risk-number">
+                            +${formatNumber(risk, 1)}
+                        </span>
+
+                    </div>
+                `;
+
+            })
+            .join("");
 
 
     eventList.innerHTML =
-        sortedEvents.map(event => {
-
-            const severity =
-                Number(event.severity || 0);
-
-            const eventType =
-                event.event_type || "unknown";
-
-            const duration =
-                Number(event.duration_seconds || 0);
-
-            const risk =
-                Number(event.risk_contribution || 0);
-
-
-            let markerClass = "good";
-
-            if (severity === 2) {
-                markerClass = "warning";
-            }
-
-            if (severity === 3) {
-                markerClass = "danger";
-            }
-
-
-            return `
-                <div class="event-row">
-
-                    <span>
-                        ${formatTime(event.timestamp)}
-                    </span>
-
-                    <span class="event-type">
-
-                        <i class="event-marker ${markerClass}"></i>
-
-                        ${eventType.toUpperCase()}
-                    </span>
-
-                    <span>
-                        <span class="severity severity-${severity}">
-                            LEVEL ${severity}
-                        </span>
-                    </span>
-
-                    <span>
-                        ${formatDuration(duration)}
-                    </span>
-
-                    <span class="risk-number">
-                        +${formatNumber(risk, 1)}
-                    </span>
-
-                </div>
-            `;
-
-        }).join("");
+        activeMarkup +
+        completedMarkup;
 }
 
 
@@ -664,19 +1122,188 @@ function formatDuration(seconds) {
     }
 
     const minutes =
-        Math.floor(seconds / 60);
+        Math.floor(
+            seconds / 60
+        );
 
     const remainingSeconds =
-        Math.round(seconds % 60);
+        Math.round(
+            seconds % 60
+        );
+
 
     if (minutes === 0) {
+
         return `${remainingSeconds}s`;
     }
+
 
     return `${minutes}m ${remainingSeconds}s`;
 }
 
 
+function parseBackendTimestamp(timestamp) {
+
+    if (!timestamp) {
+        return null;
+    }
+
+    const normalized =
+        String(timestamp)
+            .replace(" ", "T");
+
+    const date =
+        new Date(
+            normalized.endsWith("Z")
+                ? normalized
+                : `${normalized}Z`
+        );
+
+    return Number.isNaN(
+        date.getTime()
+    )
+        ? null
+        : date;
+}
+
+
+function getLiveDurationSeconds(
+    timestamp
+) {
+
+    const startedAt =
+        parseBackendTimestamp(
+            timestamp
+        );
+
+    if (!startedAt) {
+        return 0;
+    }
+
+    return Math.max(
+        (
+            Date.now() -
+            startedAt.getTime()
+        ) / 1000,
+        0
+    );
+}
+
+
+function updateDeviceStatus(
+    timestamp
+) {
+
+    if (
+        !deviceStatusElement ||
+        !deviceStatusDot
+    ) {
+        return;
+    }
+
+
+    if (!timestamp) {
+
+        deviceStatusElement.classList.remove(
+            "online",
+            "offline"
+        );
+
+        deviceStatusElement.classList.add(
+            "offline"
+        );
+
+        deviceStatusDot.className =
+            "mini-dot offline";
+
+        setDeviceStatusText(
+            " OFFLINE"
+        );
+
+        return;
+    }
+
+
+    const date =
+        parseBackendTimestamp(
+            timestamp
+        );
+
+    if (!date) {
+        return;
+    }
+
+
+    const ageSeconds =
+        (
+            Date.now() -
+            date.getTime()
+        ) / 1000;
+
+
+    const isOnline =
+        ageSeconds >= 0 &&
+        ageSeconds <= 15;
+
+
+    deviceStatusElement.classList.remove(
+        "online",
+        "offline"
+    );
+
+    deviceStatusElement.classList.add(
+        isOnline
+            ? "online"
+            : "offline"
+    );
+
+
+    deviceStatusDot.className =
+        `mini-dot ${
+            isOnline
+                ? "online"
+                : "offline"
+        }`;
+
+
+    setDeviceStatusText(
+        isOnline
+            ? " ONLINE"
+            : " OFFLINE"
+    );
+}
+
+
+function setDeviceStatusText(
+    text
+) {
+
+    if (!deviceStatusElement) {
+        return;
+    }
+
+    const textNodes =
+        Array.from(
+            deviceStatusElement.childNodes
+        ).filter(
+            node =>
+                node.nodeType ===
+                Node.TEXT_NODE
+        );
+
+    if (textNodes.length) {
+
+        textNodes[
+            textNodes.length - 1
+        ].textContent = text;
+
+    } else {
+
+        deviceStatusElement.append(
+            document.createTextNode(text)
+        );
+    }
+}
 /* ------------------------------------------------------------
    CHARTS
 ------------------------------------------------------------ */
@@ -713,10 +1340,17 @@ function updateCharts(telemetry) {
 
     /* ENVIRONMENT CHART */
 
+    const environmentCanvas =
+        document.getElementById(
+            "environmentChart"
+        );
+
+    if (!environmentCanvas) {
+        return;
+    }
+
     const environmentContext =
-        document
-            .getElementById("environmentChart")
-            .getContext("2d");
+        environmentCanvas.getContext("2d");
 
 
     if (environmentChart) {
@@ -725,156 +1359,221 @@ function updateCharts(telemetry) {
 
 
     environmentChart =
-        new Chart(environmentContext, {
+        new Chart(
+            environmentContext,
+            {
 
-            type: "line",
+                type: "line",
 
-            data: {
+                data: {
 
-                labels,
+                    labels,
 
-                datasets: [
+                    datasets: [
 
-                    {
-                        label: "Temperature",
-                        data: temperatures,
+                        {
+                            label: "Temperature",
 
-                        borderColor: "#ffb547",
+                            data: temperatures,
 
-                        backgroundColor:
-                            "rgba(255,181,71,0.08)",
+                            borderColor: "#ffb547",
 
-                        borderWidth: 2,
+                            backgroundColor:
+                                "rgba(255,181,71,0.08)",
 
-                        tension: 0.35,
+                            borderWidth: 2,
 
-                        fill: true,
+                            tension: 0.35,
 
-                        pointRadius: 2,
+                            fill: true,
 
-                        pointHoverRadius: 5
-                    },
+                            pointRadius: 2,
 
-                    {
-                        label: "Humidity",
-                        data: humidities,
-
-                        borderColor: "#5bc8ff",
-
-                        backgroundColor:
-                            "rgba(91,200,255,0.05)",
-
-                        borderWidth: 2,
-
-                        tension: 0.35,
-
-                        fill: false,
-
-                        pointRadius: 2,
-
-                        pointHoverRadius: 5,
-
-                        yAxisID: "humidityAxis"
-                    }
-
-                ]
-            },
-
-            options: {
-
-                responsive: true,
-
-                maintainAspectRatio: false,
-
-                interaction: {
-                    intersect: false,
-                    mode: "index"
-                },
-
-                plugins: {
-
-                    legend: {
-                        display: false
-                    },
-
-                    tooltip: {
-                        backgroundColor: "#0b1012",
-                        borderColor: "#20282c",
-                        borderWidth: 1,
-                        titleFont: {
-                            family: "DM Mono"
+                            pointHoverRadius: 5
                         },
-                        bodyFont: {
-                            family: "DM Mono"
+
+
+                        {
+                            label: "Humidity",
+
+                            data: humidities,
+
+                            borderColor: "#5bc8ff",
+
+                            backgroundColor:
+                                "rgba(91,200,255,0.05)",
+
+                            borderWidth: 2,
+
+                            tension: 0.35,
+
+                            fill: false,
+
+                            pointRadius: 2,
+
+                            pointHoverRadius: 5,
+
+                            yAxisID:
+                                "humidityAxis"
                         }
-                    }
+
+                    ]
                 },
 
-                scales: {
 
-                    x: {
+                options: {
 
-                        grid: {
-                            color: "rgba(255,255,255,0.035)"
+                    responsive: true,
+
+                    maintainAspectRatio: false,
+
+                    interaction: {
+
+                        intersect: false,
+
+                        mode: "index"
+                    },
+
+
+                    plugins: {
+
+                        legend: {
+
+                            display: false
                         },
 
-                        ticks: {
-                            color: "#536066",
-                            font: {
-                                family: "DM Mono",
-                                size: 8
+
+                        tooltip: {
+
+                            backgroundColor:
+                                "#0b1012",
+
+                            borderColor:
+                                "#20282c",
+
+                            borderWidth: 1,
+
+                            titleFont: {
+
+                                family: "DM Mono"
                             },
 
-                            maxTicksLimit: 8
-                        }
-                    },
+                            bodyFont: {
 
-                    y: {
-
-                        grid: {
-                            color: "rgba(255,255,255,0.035)"
-                        },
-
-                        ticks: {
-                            color: "#536066",
-                            font: {
-                                family: "DM Mono",
-                                size: 8
+                                family: "DM Mono"
                             }
                         }
                     },
 
-                    humidityAxis: {
 
-                        position: "right",
+                    scales: {
 
-                        grid: {
-                            drawOnChartArea: false
+                        x: {
+
+                            grid: {
+
+                                color:
+                                    "rgba(255,255,255,0.035)"
+                            },
+
+
+                            ticks: {
+
+                                color:
+                                    "#536066",
+
+                                font: {
+
+                                    family:
+                                        "DM Mono",
+
+                                    size: 8
+                                },
+
+                                maxTicksLimit: 8
+                            }
                         },
 
-                        ticks: {
-                            color: "#536066",
-                            font: {
-                                family: "DM Mono",
-                                size: 8
+
+                        y: {
+
+                            grid: {
+
+                                color:
+                                    "rgba(255,255,255,0.035)"
+                            },
+
+
+                            ticks: {
+
+                                color:
+                                    "#536066",
+
+                                font: {
+
+                                    family:
+                                        "DM Mono",
+
+                                    size: 8
+                                }
+                            }
+                        },
+
+
+                        humidityAxis: {
+
+                            position: "right",
+
+
+                            grid: {
+
+                                drawOnChartArea:
+                                    false
+                            },
+
+
+                            ticks: {
+
+                                color:
+                                    "#536066",
+
+                                font: {
+
+                                    family:
+                                        "DM Mono",
+
+                                    size: 8
+                                }
                             }
                         }
                     }
                 }
             }
-        });
+        );
 
 
     /* INTEGRITY CHART */
 
     const integrityValues =
-        calculateIntegrityTrend(sorted);
+        calculateIntegrityTrend(
+            sorted
+        );
+
+
+    const integrityCanvas =
+        document.getElementById(
+            "integrityChart"
+        );
+
+    if (!integrityCanvas) {
+        return;
+    }
 
 
     const integrityContext =
-        document
-            .getElementById("integrityChart")
-            .getContext("2d");
+        integrityCanvas.getContext(
+            "2d"
+        );
 
 
     if (integrityChart) {
@@ -883,95 +1582,125 @@ function updateCharts(telemetry) {
 
 
     integrityChart =
-        new Chart(integrityContext, {
+        new Chart(
+            integrityContext,
+            {
 
-            type: "line",
+                type: "line",
 
-            data: {
+                data: {
 
-                labels,
+                    labels,
 
-                datasets: [
+                    datasets: [
 
-                    {
-                        label: "Integrity",
+                        {
 
-                        data: integrityValues,
+                            label:
+                                "Integrity",
 
-                        borderColor: "#b7ff3c",
+                            data:
+                                integrityValues,
 
-                        backgroundColor:
-                            "rgba(183,255,60,0.06)",
+                            borderColor:
+                                "#b7ff3c",
 
-                        borderWidth: 2,
+                            backgroundColor:
+                                "rgba(183,255,60,0.06)",
 
-                        tension: 0.35,
+                            borderWidth: 2,
 
-                        fill: true,
+                            tension: 0.35,
 
-                        pointRadius: 2,
+                            fill: true,
 
-                        pointHoverRadius: 5
-                    }
+                            pointRadius: 2,
 
-                ]
-            },
+                            pointHoverRadius: 5
+                        }
 
-            options: {
-
-                responsive: true,
-
-                maintainAspectRatio: false,
-
-                plugins: {
-
-                    legend: {
-                        display: false
-                    }
+                    ]
                 },
 
-                scales: {
 
-                    x: {
+                options: {
 
-                        grid: {
-                            color: "rgba(255,255,255,0.035)"
-                        },
+                    responsive: true,
 
-                        ticks: {
-                            color: "#536066",
+                    maintainAspectRatio:
+                        false,
 
-                            font: {
-                                family: "DM Mono",
-                                size: 8
-                            },
 
-                            maxTicksLimit: 6
+                    plugins: {
+
+                        legend: {
+
+                            display: false
                         }
                     },
 
-                    y: {
 
-                        min: 0,
+                    scales: {
 
-                        max: 100,
+                        x: {
 
-                        grid: {
-                            color: "rgba(255,255,255,0.035)"
+                            grid: {
+
+                                color:
+                                    "rgba(255,255,255,0.035)"
+                            },
+
+
+                            ticks: {
+
+                                color:
+                                    "#536066",
+
+                                font: {
+
+                                    family:
+                                        "DM Mono",
+
+                                    size: 8
+                                },
+
+                                maxTicksLimit: 6
+                            }
                         },
 
-                        ticks: {
-                            color: "#536066",
 
-                            font: {
-                                family: "DM Mono",
-                                size: 8
+                        y: {
+
+                            min: 0,
+
+                            max: 100,
+
+
+                            grid: {
+
+                                color:
+                                    "rgba(255,255,255,0.035)"
+                            },
+
+
+                            ticks: {
+
+                                color:
+                                    "#536066",
+
+                                font: {
+
+                                    family:
+                                        "DM Mono",
+
+                                    size: 8
+                                }
                             }
                         }
                     }
                 }
             }
-        });
+        );
 }
 
 
@@ -979,82 +1708,136 @@ function updateCharts(telemetry) {
    INTEGRITY TREND CALCULATION
 ------------------------------------------------------------ */
 
-function calculateIntegrityTrend(telemetry) {
+function calculateIntegrityTrend(
+    telemetry
+) {
 
     let runningRisk = 0;
 
-    return telemetry.map(item => {
 
-        const temp = Number(item.temperature);
-        const humidity = Number(item.humidity);
-        const acceleration = Number(item.acceleration);
-        const tamper = Number(item.tamper_status);
+    return telemetry.map(
+        item => {
+
+            const temp =
+                Number(
+                    item.temperature
+                );
+
+            const humidity =
+                Number(
+                    item.humidity
+                );
+
+            const acceleration =
+                Number(
+                    item.acceleration
+                );
+
+            const tamper =
+                Number(
+                    item.tamper_status
+                );
 
 
-        let snapshotRisk = 0;
+            let snapshotRisk = 0;
 
 
-        /* Temperature */
-
-        if (temp < 2 || temp > 8) {
+            /* Temperature */
 
             if (
-                (temp >= 0 && temp < 2) ||
-                (temp > 8 && temp <= 10)
+                temp < 2 ||
+                temp > 8
             ) {
-                snapshotRisk += 8;
-            } else {
-                snapshotRisk += 24;
+
+                if (
+                    (temp >= 0 &&
+                        temp < 2) ||
+
+                    (temp > 8 &&
+                        temp <= 10)
+                ) {
+
+                    snapshotRisk += 8;
+
+                } else {
+
+                    snapshotRisk += 24;
+                }
             }
-        }
 
 
-        /* Humidity */
-
-        if (humidity < 30 || humidity > 70) {
+            /* Humidity */
 
             if (
-                (humidity >= 20 && humidity < 30) ||
-                (humidity > 70 && humidity <= 80)
+                humidity < 30 ||
+                humidity > 70
             ) {
-                snapshotRisk += 3;
-            } else {
-                snapshotRisk += 9;
+
+                if (
+                    (humidity >= 20 &&
+                        humidity < 30) ||
+
+                    (humidity > 70 &&
+                        humidity <= 80)
+                ) {
+
+                    snapshotRisk += 3;
+
+                } else {
+
+                    snapshotRisk += 9;
+                }
             }
-        }
 
 
-        /* Shock */
+            /* Shock */
 
-        if (acceleration > 6) {
-            snapshotRisk += 21;
-        } else if (acceleration > 4) {
-            snapshotRisk += 14;
-        } else if (acceleration > 2.5) {
-            snapshotRisk += 7;
-        }
+            if (
+                acceleration > 6
+            ) {
+
+                snapshotRisk += 21;
+
+            } else if (
+                acceleration > 4
+            ) {
+
+                snapshotRisk += 14;
+
+            } else if (
+                acceleration > 2.5
+            ) {
+
+                snapshotRisk += 7;
+            }
 
 
-        /* Tamper */
+            /* Tamper */
 
-        if (tamper === 1) {
-            snapshotRisk += 45;
-        }
+            if (
+                tamper === 1
+            ) {
+
+                snapshotRisk += 45;
+            }
 
 
-        runningRisk =
-            Math.min(
-                runningRisk + snapshotRisk,
-                100
+            runningRisk =
+                Math.min(
+                    runningRisk +
+                    snapshotRisk,
+                    100
+                );
+
+
+            return Math.max(
+                100 -
+                runningRisk,
+                0
             );
 
-
-        return Math.max(
-            100 - runningRisk,
-            0
-        );
-
-    });
+        }
+    );
 }
 
 
@@ -1064,66 +1847,163 @@ function calculateIntegrityTrend(telemetry) {
 
 function resetDashboard() {
 
-    integrityScoreElement.textContent = "--";
+    integrityScoreElement.textContent =
+        "--";
 
-    riskScoreElement.textContent = "--";
+
+    riskScoreElement.textContent =
+        "--";
+
 
     decisionBadge.className =
         "decision-badge neutral";
 
+
     decisionBadge.textContent =
         "NO DATA";
+
 
     decisionDescription.textContent =
         "Unable to retrieve shipment telemetry.";
 
-    document.getElementById("temperature").textContent =
+
+    document.getElementById(
+        "temperature"
+    ).textContent =
         "--";
 
-    document.getElementById("humidity").textContent =
+
+    document.getElementById(
+        "humidity"
+    ).textContent =
         "--";
 
-    document.getElementById("acceleration").textContent =
+
+    document.getElementById(
+        "acceleration"
+    ).textContent =
         "--";
 
-    document.getElementById("tamperStatus").textContent =
+
+    document.getElementById(
+        "tamperStatus"
+    ).textContent =
         "--";
 
-    document.getElementById("lastUpdated").textContent =
+
+    document.getElementById(
+        "lastUpdated"
+    ).textContent =
         "WAITING...";
+
+
+    const eventCount =
+        document.getElementById(
+            "eventCount"
+        );
+
+    if (eventCount) {
+        eventCount.textContent = "0";
+    }
+
+
+    const activeEventCount =
+        document.getElementById(
+            "activeEventCount"
+        );
+
+    if (activeEventCount) {
+        activeEventCount.textContent =
+            "0 ACTIVE";
+    }
+
+
+    updateDeviceStatus(null);
+
+
+    const eventList =
+        document.getElementById(
+            "eventList"
+        );
+
+    if (eventList) {
+
+        eventList.innerHTML = `
+            <div class="empty-events">
+                NO EVENTS RECORDED
+            </div>
+        `;
+    }
 }
 
 
 /* ------------------------------------------------------------
-   EVENTS
+   SEVERITY / EVENT HELPERS
 ------------------------------------------------------------ */
 
-loadShipmentButton.addEventListener(
-    "click",
-    () => {
+function getSeverityLabel(
+    severity
+) {
 
-        loadShipment(
-            shipmentInput.value
-        );
+    switch (
+        Number(severity)
+    ) {
 
+        case 3:
+
+            return "CRITICAL";
+
+
+        case 2:
+
+            return "HIGH";
+
+
+        case 1:
+
+            return "MODERATE";
+
+
+        default:
+
+            return "NORMAL";
     }
-);
+}
 
 
-shipmentInput.addEventListener(
-    "keydown",
-    event => {
+function getEventIcon(
+    eventType
+) {
 
-        if (event.key === "Enter") {
+    switch (
+        eventType
+    ) {
 
-            loadShipment(
-                shipmentInput.value
-            );
+        case "temperature":
 
-        }
+            return "🌡";
 
+
+        case "humidity":
+
+            return "💧";
+
+
+        case "shock":
+
+            return "⚡";
+
+
+        case "tamper":
+
+            return "🔓";
+
+
+        default:
+
+            return "⚠";
     }
-);
+}
 
 
 /* ------------------------------------------------------------
@@ -1139,7 +2019,10 @@ async function refreshCurrentShipment() {
                 `${API_BASE}/api/shipments/${encodeURIComponent(currentShipment)}/summary`
             );
 
-        updateDashboard(summary);
+
+        updateDashboard(
+            summary
+        );
 
 
         const telemetry =
@@ -1147,14 +2030,23 @@ async function refreshCurrentShipment() {
                 `${API_BASE}/api/telemetry/${encodeURIComponent(currentShipment)}`
             );
 
+
         updateCharts(
             telemetry.telemetry || []
         );
 
 
+        /*
+           IMPORTANT:
+           Pass both completed and active events.
+           Otherwise active events disappear after refresh.
+        */
+
         updateEvents(
-            summary.event_history || []
+            summary.event_history || [],
+            summary.active_events || []
         );
+
 
     } catch (error) {
 
@@ -1167,6 +2059,35 @@ async function refreshCurrentShipment() {
 
 
 /* ------------------------------------------------------------
+   EVENTS
+------------------------------------------------------------ */
+
+loadShipmentButton.addEventListener(
+    "click",
+    () => {
+
+        loadShipment(
+            shipmentInput.value
+        );
+    }
+);
+
+
+shipmentInput.addEventListener(
+    "keydown",
+    event => {
+
+        if (event.key === "Enter") {
+
+            loadShipment(
+                shipmentInput.value
+            );
+        }
+    }
+);
+
+
+/* ------------------------------------------------------------
    INITIAL LOAD
 ------------------------------------------------------------ */
 
@@ -1174,12 +2095,14 @@ document.addEventListener(
     "DOMContentLoaded",
     () => {
 
-        loadShipment(currentShipment);
+        loadShipment(
+            currentShipment
+        );
+
 
         setInterval(
             refreshCurrentShipment,
             5000
         );
-
     }
 );
