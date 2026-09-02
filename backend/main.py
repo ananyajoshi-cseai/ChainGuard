@@ -1,5 +1,4 @@
-from datetime import datetime
-
+from datetime import datetime, timezone
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -136,7 +135,7 @@ def reset_shipment_data(shipment_id: str):
 @app.post("/api/telemetry")
 def receive_telemetry(data: SensorPayload):
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     # --------------------------------------------------
     # 1. Store raw telemetry
