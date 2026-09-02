@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from database import (
     get_active_event,
@@ -20,7 +20,7 @@ SHOCK_COOLDOWN_SECONDS = 5
 
 
 def current_timestamp():
-    return datetime.utcnow()
+    return datetime.now(timezone.utc)
 
 
 def detect_events(
