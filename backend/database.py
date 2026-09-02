@@ -413,3 +413,29 @@ def update_shipment_state(
 
     conn.commit()
     conn.close()
+
+def reset_shipment(shipment_id):
+    conn = get_connection()
+
+    conn.execute("""
+        DELETE FROM telemetry
+        WHERE shipment_id = ?
+    """, (shipment_id,))
+
+    conn.execute("""
+        DELETE FROM events
+        WHERE shipment_id = ?
+    """, (shipment_id,))
+
+    conn.execute("""
+        DELETE FROM active_events
+        WHERE shipment_id = ?
+    """, (shipment_id,))
+
+    conn.execute("""
+        DELETE FROM shipment_state
+        WHERE shipment_id = ?
+    """, (shipment_id,))
+
+    conn.commit()
+    conn.close()
