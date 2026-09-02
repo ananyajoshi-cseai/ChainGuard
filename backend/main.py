@@ -393,7 +393,7 @@ def shipment_summary(shipment_id: str):
         shipment_id
     )
 
-    now = datetime.utcnow()
+    now=datetime.now(timezone.utc)
 
     decision = calculate_cumulative_risk(
         completed_events=completed_events,
