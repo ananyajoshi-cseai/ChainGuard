@@ -48,22 +48,41 @@ graph LR
 
 ## 📸 Visual Overview & Reference Links
 
+<br>
+
 ### 🖥️ Live Monitoring Dashboard
+
 The web dashboard provides real-time tracking of the shipment's integrity score, risk analysis, and raw sensor conditions.
-![Dashboard Overview](dashboard 1.png)
+
+![Dashboard Overview](<dashboard1.png>)
+
+<br>
 
 Historical telemetry, event logs, and active condition excursions are visualized on the tracking timeline.
+
 ![Dashboard Telemetry & Events](dashboard2.png)
 
+<br>
+<br>
+
 ### 🔌 Hardware Circuit & Simulation
+
 Before physical deployment, the ESP32-based hardware edge was architected and tested using Cirkit Designer. 
-![Circuit Design](circuit 1.png)
-![Simulation Initialization](simulation 1.png)
+
+![Circuit Design](<circuit1.png>)
+
+<br>
+
+![Simulation Initialization](<simulation1.png>)
+
+<br>
 
 The simulation console demonstrates the ESP32 successfully polling sensors and transmitting JSON payloads to the backend API.
-![Simulation Telemetry Flow](simulation 2.png)
 
+![Simulation Telemetry Flow](<simulation2.png>)
 
+<br>
+<br>
 ---
 
 ## ⚙️ Core Architecture
