@@ -82,6 +82,11 @@ The simulation console demonstrates the ESP32 successfully polling sensors and t
 ![Simulation Telemetry Flow](<simulation2.png>)
 
 <br>
+
+### 🔗 Key Project Links
+
+* **[Cirkit Designer Simulation Workspace](https://app.cirkitdesigner.com/project/80530e4d-29f7-445a-b491-e911d28aa472):** View our interactive hardware simulation, wiring schematics, and component layout for the ESP32 and its connected sensors.
+* **[Live FastAPI Backend](https://chainguard-qpy6.onrender.com/):** The deployed cloud backend that actively receives telemetry, powers the decision engine, and serves data to the frontend dashboard.
 <br>
 
 ## ⚙️ Core Architecture
