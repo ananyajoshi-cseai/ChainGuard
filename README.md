@@ -46,6 +46,24 @@ graph LR
 - **API Health Check:** [https://chainguard-qpy6.onrender.com/health](https://chainguard-qpy6.onrender.com/health)
 - **GitHub Repository:** [https://github.com/ananyajoshi-cseai/ChainGuard](https://github.com/ananyajoshi-cseai/ChainGuard)
 
+## 📸 Visual Overview & Reference Links
+
+### 🖥️ Live Monitoring Dashboard
+The web dashboard provides real-time tracking of the shipment's integrity score, risk analysis, and raw sensor conditions.
+![Dashboard Overview](dashboard 1.png)
+
+Historical telemetry, event logs, and active condition excursions are visualized on the tracking timeline.
+![Dashboard Telemetry & Events](dashboard2.png)
+
+### 🔌 Hardware Circuit & Simulation
+Before physical deployment, the ESP32-based hardware edge was architected and tested using Cirkit Designer. 
+![Circuit Design](circuit 1.png)
+![Simulation Initialization](simulation 1.png)
+
+The simulation console demonstrates the ESP32 successfully polling sensors and transmitting JSON payloads to the backend API.
+![Simulation Telemetry Flow](simulation 2.png)
+
+
 ---
 
 ## ⚙️ Core Architecture
