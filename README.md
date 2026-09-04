@@ -83,7 +83,6 @@ The simulation console demonstrates the ESP32 successfully polling sensors and t
 
 <br>
 <br>
----
 
 ## ⚙️ Core Architecture
 
