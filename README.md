@@ -77,7 +77,7 @@ Before physical deployment, the ESP32-based hardware edge was architected and te
 
 <br>
 
-The simulation console demonstrates the ESP32 successfully polling sensors and transmitting JSON payloads to the backend API.
+The simulation console demonstrates the ESP32 successfully polling sensors and transmitting JSON payloads to the backend API
 
 ![Simulation Telemetry Flow](<simulation2.png>)
 
